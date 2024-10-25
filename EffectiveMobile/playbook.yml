@@ -1,0 +1,68 @@
+---
+
+- name: Устанавливаем docker docker-compose и настраиваем сервисы через ansible
+  hosts: [EffectiveMobile_WEB]
+  become: true
+
+  tasks:
+
+    - name: Устанавливаем зависимсти для docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Установливаем docker и docker-compose
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: yes
+
+    - name: Добавляем пользователя в группу docker
+      user:
+        name: "root"
+        groups: docker
+        append: yes
+
+    - name: Запускаем сервис docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Копируем docker-compose.yml на сервер
+      copy:
+        src: ./docker-compose.yml
+        dest: /root/docker-compose.yml
+
+    - name: Создаем директорию для конфиг фаила Nginx
+      file:
+        path: /etc/nginx/
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Копируем Nginx конфигурацию из директории template
+      template:
+        src: ./templates/nginx.conf
+        dest: /etc/nginx/nginx.conf
+      notify: Restart docker-compose
+
+    - name: Запускаем docker контейнер с использованием docker-compose
+      command: docker-compose up -d
+      args:
+        chdir: /root/
+
+  handlers:
+    - name: Restart docker-compose
+      service:
+        name: nginx
+        state: restarted

@@ -1,0 +1,49 @@
+---
+
+version: '3.8'
+
+services:
+  nginx-app:
+    image: nginx:stable
+    container_name: con-nginx
+    volumes:
+      - '/opt/web/html:/var/www/html'
+    environment:
+      - 'NGINX_HOST=web.andyrey.io'
+      - 'NGINX_PORT=80'
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    networks:
+      - net-app
+  mysql-db:
+    image: mysql:8.0
+    container_name: con-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: exampledb
+      MYSQL_USER: exampleuser
+      MYSQL_PASSWORD: examplepass
+      MYSQL_ROOT_PASSWORD: '1234567#'
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - net-app
+  php-app:
+    image: php:fpm
+    container_name: con-php
+    ports:
+      - '80:80'
+    restart: unless-stopped
+    depends_on:
+      - nginx-app
+      - mysql-db
+    networks:
+      - net-app
+volumes:
+  db:
+networks:
+  net-app:
+    name: net-app
+    driver: bridge
